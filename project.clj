@@ -3,7 +3,7 @@
   :url "http://"
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
                  [cheshire "5.5.0"]
                  [funcool/cuerdas "0.5.0"]
                  [camel-snake-kebab "0.3.2"]

@@ -7,14 +7,21 @@
             [gen-phzr.codegen.files.src-file :as fsf]
             [gen-phzr.codegen.files.extend-all-file :as feaf]
             [gen-phzr.codegen.files.test-all-file :as ftaf]
-            [gen-phzr.util :as u]))
+            [gen-phzr.util :as u]
+            [clojure.pprint]))
 
 
 (defn ^:private build-data
   [json]
   (let [json-data (c/parse-string json true)
-        class-col (:classes json-data)]
-    (into {} (for [klass class-col] [(:name klass) klass]))))
+        class-col (filter #(= (:kind %) "class") (:docs json-data))
+        properties-by-class (group-by (juxt :memberof :kind) (:docs json-data ))]
+    (into {} (for [klass class-col
+                   :let [class-name (:longname klass)]]
+               [(:longname klass) (merge klass {:functions
+                                                (get properties-by-class [class-name "function"])
+                                                :members
+                                                (get properties-by-class [class-name "member"])})]))))
 
 (defn ^:private fix-bad-doc-in-image-pre-update
   [data]
@@ -167,18 +174,19 @@
 (defn ^:private massage-data
   [data]
   (-> data
-      (fix-bad-doc-in-image-pre-update)
-      (remove-duplicate-just-pressed-from-gamepad)
-      (fix-bad-doc-in-tween-repeat-all)
-      (fix-bad-doc-in-debug-geom)
-      (fix-bad-create-body-in-p2)
-      (fix-bad-create-particle-in-p2)
-      (fix-bad-add-polygon-in-p2-body)
-      (fix-bad-play-in-audio-sprite)
-      (fix-pixi-class-name)
-      (make-class-static "Phaser.Math")
-      (make-class-static "Phaser.Utils")
-      (make-class-static "Phaser.ArrayUtils")))
+      ;; (fix-bad-doc-in-image-pre-update)
+      ;; (remove-duplicate-just-pressed-from-gamepad)
+      ;; (fix-bad-doc-in-tween-repeat-all)
+      ;; (fix-bad-doc-in-debug-geom)
+      ;; (fix-bad-create-body-in-p2)
+      ;; (fix-bad-create-particle-in-p2)
+      ;; (fix-bad-add-polygon-in-p2-body)
+      ;; (fix-bad-play-in-audio-sprite)
+      ;; (fix-pixi-class-name)
+      ;; (make-class-static "Phaser.Math")
+      ;; (make-class-static "Phaser.Utils")
+      ;; (make-class-static "Phaser.ArrayUtils")
+      ))
 
 (defn ^:private public-access?
   [f]
@@ -187,9 +195,9 @@
 (defn ^:private build-export-data
   [data]
   (into {} (for [[class-name klass] data]
-             (let [class-name  (:name klass)
+             (let [class-name  (:longname klass)
                    functions   (filter public-access? (:functions klass))
-                   constructor (:constructor klass)
+                   constructor (dissoc klass :members :functions)
                    constants   (->> (:members klass)
                                     (filter public-access?)
                                     (filter #(= "constant" (:kind %))))
@@ -205,18 +213,35 @@
 
 (defn gen-files
   [json-resource-name]
-  (let [data          (build-data (slurp (io/resource json-resource-name)))
+  (let [data (build-data (slurp (io/resource json-resource-name)))
         massaged-data (massage-data data)
-        class-names   (u/export-class-names massaged-data)
-        export-data   (build-export-data
-                       (select-keys massaged-data class-names))]
+        class-names (u/export-class-names massaged-data)
+        export-data (build-export-data
+                     (select-keys massaged-data class-names))]
     (remove nil?
-            (conj
-             (concat (pmap (fn [[class-name class-data]]
-                             (fsf/build-src-file class-name class-data))
-                           export-data)
-                     (pmap (fn [[class-name class-data]]
-                             (faf/build-accessor-file class-name class-data))
-                           export-data))
-             (ftaf/build-test-file export-data)
-             (feaf/build-extend-all-file export-data)))))
+            (conj (concat
+                   (pmap (fn [[class-name class-data]]
+                           (fsf/build-src-file class-name class-data))
+                         export-data)
+                   (pmap (fn [[class-name class-data]]
+                           (faf/build-accessor-file class-name class-data))
+                         export-data))
+                  (feaf/build-extend-all-file export-data)))))
+
+;; (defn gen-files
+;;   [json-resource-name]
+;;   (let [data          (build-data (slurp (io/resource json-resource-name)))
+;;         massaged-data (massage-data data)
+;;         class-names   (u/export-class-names massaged-data)
+;;         export-data   (build-export-data
+;;                        (select-keys massaged-data class-names))]
+;;     (remove nil?
+;;             (conj
+;;              (concat (pmap (fn [[class-name class-data]]
+;;                              (fsf/build-src-file class-name class-data))
+;;                            export-data)
+;;                      (pmap (fn [[class-name class-data]]
+;;                              (faf/build-accessor-file class-name class-data))
+;;                            export-data))
+;;              (ftaf/build-test-file export-data)
+;;              (feaf/build-extend-all-file export-data)))))

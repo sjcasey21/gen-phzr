@@ -17,11 +17,11 @@
 (defn ^:private clean-param-type
   [param-type]
   (cond
-    (coll? param-type)
-    (str/join " | " (map str/trim param-type))
+    (coll? (:names param-type))
+    (str/join " | " (map str/trim (:names param-type)))
 
     :else
-    param-type))
+    (:names param-type)))
 
 (def ^:private crosslink-regex
   #"\{\{\#crossLink \"(.*?)\"\}\}(.*?)\{\{\/crossLink\}\}")
@@ -85,19 +85,23 @@
 (defn ^:private return-docstring
   [returns]
   (when returns
-    (let [type-str (as-> (:type returns) x
-                     (str/replace x #"\"" "")
-                     (str/trim x)
-                     (str/split x #"\s+")
+    (let [type-str (as-> returns x
+                     (first x)
+                     (:type x)
+                     (:names x)
+                     (map #(-> %
+                               (str/replace #"\"" "")
+                               (str/trim )) x)
+                     ;; (str/split x #"\s+")
                      (str/join " | " x))
-          desc-str (quote-str (:description returns))]
+          desc-str (quote-str (:description (first returns)))]
       (str "  Returns:  " type-str " - " desc-str))))
 
 (defn ^:private build-docstring
   [class-name f]
   (let [desc     (indent-desc (quote-str (:description f)))
         static?  (:static f)
-        params   (:parameters f)
+        params   (:params f)
         returns  (:returns f)
         doc-strs [desc
                   (if static?
@@ -188,7 +192,7 @@
         static?       (:static f)
         fn-name-kebab (u/name->kebab fn-name)
         docstring     (build-docstring class-name f)
-        fn-params     (:parameters f)
+        fn-params     (:params f)
         bodies        (build-fn-bodies class-name fn-name fn-params static?)]
     (cfmt/reformat-string
      (format fn-template
@@ -201,13 +205,14 @@
 (defn ^:private build-constructor-docstring
   [c]
   (let [desc     (indent-desc (quote-str (:description c)))
-        params   (:parameters c)
+        params   (:params c)
         doc-strs [desc
                   (param-docstring params)]]
     (str/join "\n\n" (filter identity doc-strs))))
 
 (def ^:private constructor-body-template
-  "([%s]\n (js/%s. %s))")
+  "([%s]\n (js/%s. %s))"
+  )
 
 (defn ^:private build-constructor-body
   [class-name params]
@@ -223,7 +228,7 @@
   (when-not (u/raw-phaser-objs class-name)
     (let [fn-name     (str "->" (:name c))
           docstring   (build-constructor-docstring c)
-          fn-params   (:parameters c)
+          fn-params   (:params c)
           req-params  (filter req-param? fn-params)
           opt-params  (remove req-param? fn-params)
           param-perms (parameter-permutations req-params opt-params)
