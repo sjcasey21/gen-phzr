@@ -16,17 +16,3 @@
       (println "Writing to" (:path f))
       (io/make-parents (:path f))
       (spit (:path f) (:text f)))))
-
-
-;; (def docs (:docs (c/parse-string (slurp (io/resource "phaser3.json")) true)))
-;; (def class-col (filter #(= (:kind %) "class") docs))
-;; (def properties-by-class (group-by (juxt :memberof :kind) docs))
-
-;; (def transposed-classes
-;;   (into {} (for [klass class-col
-;;                  :let [class-name (:longname klass)]]
-;;              [(:longname klass) (merge klass {:functions
-;;                                               (get properties-by-class [class-name "function"])
-;;                                               :members
-;;                                               (get properties-by-class [class-name "member"])})])))
-

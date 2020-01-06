@@ -20,10 +20,10 @@ change into the `resources/phaser-src` directory. Then run the following
 commands:
 
 ```bash
-grunt clean
-grunt pixidoc
-grunt gitclone:plugins
-grunt jsdoc:json
+npm install
+npm install jsdoc-json
+npx jsdoc -c jsdoc-tsd.conf.json --template ../../node_modules/jsdoc-json --destination phaser.json
+cp phaser.json <gen-phzr resources>
 ```
 
 Install whatever grunt/node packages are necessary to make those commands run
